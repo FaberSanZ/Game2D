@@ -44,6 +44,24 @@ ID3D11ShaderResourceView* CreateStructuredBufferView(ID3D11Device* device, ID3D1
 	return view;
 }
 
+
+ID3D11Buffer* CreateIndexBuffer(ID3D11Device* device, const void* data, uint32_t size)
+{
+	D3D11_BUFFER_DESC bufferDesc = {};
+	bufferDesc.ByteWidth = size;
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	bufferDesc.CPUAccessFlags = 0;
+
+	D3D11_SUBRESOURCE_DATA initData = {};
+	initData.pSysMem = data;
+
+	ID3D11Buffer* buffer = nullptr;
+	device->CreateBuffer(&bufferDesc, &initData, &buffer);
+
+	return buffer;
+}
+
 int main()
 {
 	uint32_t width = 1220;
@@ -63,7 +81,7 @@ int main()
 	// mesh
 	ID3D11Buffer* vertexBuffer = nullptr;
 	ID3D11ShaderResourceView* vertexView = nullptr;
-
+	ID3D11Buffer* indexBuffer = nullptr;
 
 	WNDCLASSEX wcex = { sizeof(WNDCLASSEX), CS_CLASSDC, DefWindowProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, title, nullptr };
 	RegisterClassEx(&wcex);
@@ -105,19 +123,29 @@ int main()
 
 	Vertex vertices[] =
 	{
-		{  0.0f,  0.5f, 0.0f, 1.0f, // POSITION
+		{  -0.5f,  0.5f, 0.0f, 1.0f, // POSITION
 			0.9f, 0.0f, 0.0f, 1.0f},     // COLOR
 
-		{  0.5f, -0.5f, 0.0f, 1.0f, // POSITION
+		{  0.5f, 0.5f, 0.0f, 1.0f, // POSITION
 			0.0f, 0.9f, 0.0f, 1.0f,},     // COLOR
 
-		{ -0.5f, -0.5f, 0.0f,1.0f,  // POSITION
-			0.0f, 0.0f, 0.9f, 1.0f, }      // COLOR
+		{ 0.5f, -0.5f, 0.0f,1.0f,  // POSITION
+			0.0f, 0.0f, 0.9f, 1.0f, } ,     // COLOR
+
+		{  -0.5f, -0.5f, 0.0f, 1.0f,  0.0f, 0.0f, 0.9f, 1.0f,}
 	};
 
-	vertexBuffer = CreateStructuredBuffer(device, vertices, sizeof(float) * 8, 3);
-	vertexView = CreateStructuredBufferView(device, vertexBuffer, 3);
+	vertexBuffer = CreateStructuredBuffer(device, vertices, sizeof(Vertex), 4);
+	vertexView = CreateStructuredBufferView(device, vertexBuffer, 4);
 
+
+	uint32_t indices[] =
+	{
+		0, 1, 2,
+		0, 2, 3
+	};
+
+	indexBuffer = CreateIndexBuffer(device, indices, sizeof(indices));
 	MSG msg = {};
 	while (msg.message != WM_QUIT)
 	{
@@ -145,12 +173,15 @@ int main()
 		cmd->PSSetShader(pixelShader, nullptr, 0);
 		//cmd->IASetInputLayout(nullptr);
 		cmd->VSSetShaderResources(0, 1, &vertexView);
-		cmd->Draw(3, 0);
+		cmd->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+
+		cmd->DrawIndexed(6, 0, 0);
 
 		swapChain->Present(1, 0);
 	}
 
 	// Cleanup
+	if (indexBuffer) indexBuffer->Release();
 	if (vertexShader) vertexShader->Release();
 	if (pixelShader) pixelShader->Release();
 	if (vsBlob) vsBlob->Release();
