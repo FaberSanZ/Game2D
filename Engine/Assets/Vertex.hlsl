@@ -1,15 +1,26 @@
-StructuredBuffer<float3> Vertices : register(t0);
-
-
-
-float4 VS(uint vId : SV_VertexID) : SV_Position
+struct Vertex
 {
-    float4 triangle_positions[3] = 
-    {
-        float4(0.0f, 0.5f, 0.0f, 1.0f),
-        float4(0.5f, -0.5f, 0.0f, 1.0f),
-        float4(-0.5f, -0.5f, 0.0f, 1.0f),
-    };
+    float4 Position;
+    float4 Color;
+};
+
+StructuredBuffer<Vertex> Vertices : register(t0);
+
+
+struct PixelInputType
+{
+    float4 Pos : SV_POSITION;
+    float4 Color : COLOR;
+};
+
+PixelInputType VS(uint vId : SV_VertexID)
+{
     
-    return float4(Vertices[vId], 1.0f);
+    Vertex input = Vertices[vId];
+    
+    PixelInputType output;
+    output.Pos = input.Position;
+    output.Color = input.Color;
+    
+    return output;
 }

@@ -96,15 +96,26 @@ int main()
 	device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &vertexShader);
 	device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &pixelShader);
 
-
-	float vertices[] = 
+	// Define vertices for a triangle
+	struct Vertex
 	{
-		0.0f,  0.5f, 0.0f,  // Top vertex
-		0.5f, -0.5f, 0.0f,  // Bottom right vertex
-	   -0.5f, -0.5f, 0.0f   // Bottom left vertex
+		float position[4];
+		float color[4];
 	};
 
-	vertexBuffer = CreateStructuredBuffer(device, vertices, sizeof(float) * 3, 3);
+	Vertex vertices[] =
+	{
+		{  0.0f,  0.5f, 0.0f, 1.0f, // POSITION
+			0.9f, 0.0f, 0.0f, 1.0f},     // COLOR
+
+		{  0.5f, -0.5f, 0.0f, 1.0f, // POSITION
+			0.0f, 0.9f, 0.0f, 1.0f,},     // COLOR
+
+		{ -0.5f, -0.5f, 0.0f,1.0f,  // POSITION
+			0.0f, 0.0f, 0.9f, 1.0f, }      // COLOR
+	};
+
+	vertexBuffer = CreateStructuredBuffer(device, vertices, sizeof(float) * 8, 3);
 	vertexView = CreateStructuredBufferView(device, vertexBuffer, 3);
 
 	MSG msg = {};
@@ -132,9 +143,8 @@ int main()
 		cmd->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		cmd->VSSetShader(vertexShader, nullptr, 0);
 		cmd->PSSetShader(pixelShader, nullptr, 0);
-		cmd->IASetInputLayout(nullptr);
+		//cmd->IASetInputLayout(nullptr);
 		cmd->VSSetShaderResources(0, 1, &vertexView);
-
 		cmd->Draw(3, 0);
 
 		swapChain->Present(1, 0);
