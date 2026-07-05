@@ -1,3 +1,7 @@
+StructuredBuffer<float3> Vertices : register(t0);
+
+
+
 float4 VS(uint vId : SV_VertexID) : SV_Position
 {
     float4 triangle_positions[3] = 
@@ -7,5 +11,5 @@ float4 VS(uint vId : SV_VertexID) : SV_Position
         float4(-0.5f, -0.5f, 0.0f, 1.0f),
     };
     
-    return triangle_positions[vId];
+    return float4(Vertices[vId], 1.0f);
 }

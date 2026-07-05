@@ -8,8 +8,40 @@
 
 void CompileShaderFromFile(const wchar_t* filePath, const char* entryPoint, const char* shaderModel, ID3DBlob** blob)
 {
-	//ID3DBlob* errorBlob = nullptr;
 	D3DCompileFromFile(filePath, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, entryPoint, shaderModel, 0, 0, blob, nullptr);
+}
+
+ID3D11Buffer* CreateStructuredBuffer(ID3D11Device* device, const void* data, uint32_t stride, uint32_t count)
+{
+	D3D11_BUFFER_DESC bufferDesc = {};
+	bufferDesc.ByteWidth = stride * count;
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	bufferDesc.CPUAccessFlags = 0;
+	bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+	bufferDesc.StructureByteStride = stride;
+
+	D3D11_SUBRESOURCE_DATA initData = {};
+	initData.pSysMem = data;
+
+	ID3D11Buffer* buffer = nullptr;
+	device->CreateBuffer(&bufferDesc, &initData, &buffer);
+
+	return buffer;
+}
+
+ID3D11ShaderResourceView* CreateStructuredBufferView(ID3D11Device* device, ID3D11Buffer* buffer, uint32_t count)
+{
+	D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+	srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	srvDesc.Buffer.FirstElement = 0;
+	srvDesc.Buffer.NumElements = count;
+
+	ID3D11ShaderResourceView* view = nullptr;
+	device->CreateShaderResourceView(buffer, &srvDesc, &view);
+
+	return view;
 }
 
 int main()
@@ -27,6 +59,10 @@ int main()
 
 	ID3D11VertexShader* vertexShader = nullptr;
 	ID3D11PixelShader* pixelShader = nullptr;
+
+	// mesh
+	ID3D11Buffer* vertexBuffer = nullptr;
+	ID3D11ShaderResourceView* vertexView = nullptr;
 
 
 	WNDCLASSEX wcex = { sizeof(WNDCLASSEX), CS_CLASSDC, DefWindowProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, title, nullptr };
@@ -60,6 +96,17 @@ int main()
 	device->CreateVertexShader(vsBlob->GetBufferPointer(), vsBlob->GetBufferSize(), nullptr, &vertexShader);
 	device->CreatePixelShader(psBlob->GetBufferPointer(), psBlob->GetBufferSize(), nullptr, &pixelShader);
 
+
+	float vertices[] = 
+	{
+		0.0f,  0.5f, 0.0f,  // Top vertex
+		0.5f, -0.5f, 0.0f,  // Bottom right vertex
+	   -0.5f, -0.5f, 0.0f   // Bottom left vertex
+	};
+
+	vertexBuffer = CreateStructuredBuffer(device, vertices, sizeof(float) * 3, 3);
+	vertexView = CreateStructuredBufferView(device, vertexBuffer, 3);
+
 	MSG msg = {};
 	while (msg.message != WM_QUIT)
 	{
@@ -85,6 +132,9 @@ int main()
 		cmd->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		cmd->VSSetShader(vertexShader, nullptr, 0);
 		cmd->PSSetShader(pixelShader, nullptr, 0);
+		cmd->IASetInputLayout(nullptr);
+		cmd->VSSetShaderResources(0, 1, &vertexView);
+
 		cmd->Draw(3, 0);
 
 		swapChain->Present(1, 0);
