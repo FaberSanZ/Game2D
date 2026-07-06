@@ -28,11 +28,21 @@ ID3D11Buffer* CreateStructuredBuffer(ID3D11Device* device, const void* data, uin
 	bufferDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
 	bufferDesc.StructureByteStride = stride;
 
-	D3D11_SUBRESOURCE_DATA initData = {};
-	initData.pSysMem = data;
 
 	ID3D11Buffer* buffer = nullptr;
-	device->CreateBuffer(&bufferDesc, &initData, &buffer);
+
+	if (data)
+	{
+		D3D11_SUBRESOURCE_DATA initData = {};
+		initData.pSysMem = data;
+
+		device->CreateBuffer(&bufferDesc, &initData, &buffer);
+	}
+	else
+	{
+		device->CreateBuffer(&bufferDesc, nullptr, &buffer);
+	}
+
 
 	return buffer;
 }
@@ -284,7 +294,7 @@ int main()
 
 
 
-	const float halfVisibleHeight = 4.0f;
+	const float halfVisibleHeight = 2.0f;
 	const float aspectRatio = (float)width / (float)height;
 	const float halfVisibleWidth = halfVisibleHeight * aspectRatio;
 
@@ -292,29 +302,30 @@ int main()
 
 	cameraBuffer = CreateConstantBuffer(device, sizeof(DirectX::XMMATRIX));
 	std::vector<DirectX::XMMATRIX> instanceMatrices;
+	instanceMatrices.reserve(8 * 8);
 
-	DirectX::XMMATRIX meshMatrix =
-		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) *
-		DirectX::XMMatrixRotationZ(0.1f) *
-		DirectX::XMMatrixTranslation(0.0f, 0.0f, 0.0f);
+	//DirectX::XMMATRIX meshMatrix =
+	//	DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) *
+	//	DirectX::XMMatrixRotationZ(0.1f) *
+	//	DirectX::XMMatrixTranslation(0.0f, 0.0f, 0.0f);
 
-	instanceMatrices.push_back(DirectX::XMMatrixTranspose(meshMatrix));
+	//instanceMatrices.push_back(DirectX::XMMatrixTranspose(meshMatrix));
 
-	meshMatrix =
-		DirectX::XMMatrixScaling(0.5f, 0.5f, 1.0f) *
-		DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, 0.4f) *
-		DirectX::XMMatrixTranslation(1.3f, 1.3f, 0.0f);
+	//meshMatrix =
+	//	DirectX::XMMatrixScaling(0.5f, 0.5f, 1.0f) *
+	//	DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, 0.4f) *
+	//	DirectX::XMMatrixTranslation(1.3f, 1.3f, 0.0f);
 
-	instanceMatrices.push_back(DirectX::XMMatrixTranspose(meshMatrix));
+	//instanceMatrices.push_back(DirectX::XMMatrixTranspose(meshMatrix));
 
-	const uint32_t instanceCount = static_cast<uint32_t>(instanceMatrices.size());
+	const uint32_t instanceCount = 8 * 8;
 
-	instacingBuffer = CreateStructuredBuffer(device, instanceMatrices.data(), sizeof(DirectX::XMMATRIX), instanceCount);
+	instacingBuffer = CreateStructuredBuffer(device, nullptr, sizeof(DirectX::XMMATRIX), instanceCount);
 	instacingView = CreateStructuredBufferView(device, instacingBuffer, instanceCount);
 
 
 
-	//cmd->UpdateSubresource(instacingBuffer, 0, nullptr, instanceMatrices.data(), 0, 0);
+	float gameTime = 0.0f;
 
 	MSG msg = {};
 	while (msg.message != WM_QUIT)
@@ -323,6 +334,18 @@ int main()
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 
+		instanceMatrices.clear();
+
+		for(float x = -2.0f; x < 2.0f; x += 0.5f)
+		{
+			for(float y = -2.0f; y < 2.0f; y += 0.5f)
+			{
+				DirectX::XMMATRIX meshMatrix = DirectX::XMMatrixScaling(0.2f, 0.2f, 1.0f) * DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, gameTime) * DirectX::XMMatrixTranslation(x, y, 0.0f);
+				instanceMatrices.push_back(DirectX::XMMatrixTranspose(meshMatrix));
+			}
+		}
+
+		cmd->UpdateSubresource(instacingBuffer, 0, nullptr, instanceMatrices.data(), 0, 0);
 
 		cmd->OMSetRenderTargets(1, &rtv, nullptr);
 
@@ -354,9 +377,11 @@ int main()
 		cmd->VSSetConstantBuffers(0, 1, &cameraBuffer);
 		cmd->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 		cmd->VSSetShaderResources(1, 1, &instacingView);
-		cmd->DrawIndexedInstanced(6, 2, 0, 0, 0);
+		cmd->DrawIndexedInstanced(6, 560, 0, 0, 0);
 
 		swapChain->Present(1, 0);
+
+		gameTime += 0.016f;
 	}
 
 	// Cleanup
