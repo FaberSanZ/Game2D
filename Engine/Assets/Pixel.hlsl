@@ -1,12 +1,15 @@
-struct PixelInputType
+Texture2D DiffuseTexture : register(t0);
+SamplerState DiffuseSampler : register(s0);
+
+struct PSInput
 {
-    float4 Pos : SV_POSITION;
-    float4 Color : COLOR;
+    float4 position : SV_POSITION;
+    float4 color : COLOR0;
+    float2 uv : TEXCOORD0;
 };
 
-
-
-float4 PS(PixelInputType input) : SV_TARGET
+float4 PS(PSInput input) : SV_TARGET
 {
-    return input.Color;
+    float4 textureColor = DiffuseTexture.Sample(DiffuseSampler, input.uv);
+    return textureColor * input.color;
 }

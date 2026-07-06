@@ -1,26 +1,27 @@
 struct Vertex
 {
-    float4 Position;
-    float4 Color;
+    float4 position;
+    float4 color;
+    float2 uv;
 };
 
 StructuredBuffer<Vertex> Vertices : register(t0);
 
-
-struct PixelInputType
+struct VSOutput
 {
-    float4 Pos : SV_POSITION;
-    float4 Color : COLOR;
+    float4 position : SV_POSITION;
+    float4 color : COLOR0;
+    float2 uv : TEXCOORD0;
 };
 
-PixelInputType VS(uint vId : SV_VertexID)
+VSOutput VS(uint vertexID : SV_VertexID)
 {
-    
-    Vertex input = Vertices[vId];
-    
-    PixelInputType output;
-    output.Pos = input.Position;
-    output.Color = input.Color;
-    
+    Vertex vertex = Vertices[vertexID];
+
+    VSOutput output;
+    output.position = vertex.position;
+    output.color = vertex.color;
+    output.uv = vertex.uv;
+
     return output;
 }
