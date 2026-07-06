@@ -1,3 +1,5 @@
+//#pragma pack_matrix(row_major)
+
 struct Vertex
 {
     float4 position;
@@ -7,6 +9,18 @@ struct Vertex
 
 StructuredBuffer<Vertex> Vertices : register(t0);
 
+cbuffer CameraBuffer : register(b0)
+{
+    float4x4 viewProjectionMatrix;
+};
+
+struct InstacingData
+{
+    float4x4 model;
+};
+
+StructuredBuffer<InstacingData> InstanceData : register(t1);
+
 struct VSOutput
 {
     float4 position : SV_POSITION;
@@ -14,12 +28,14 @@ struct VSOutput
     float2 uv : TEXCOORD0;
 };
 
-VSOutput VS(uint vertexID : SV_VertexID)
+VSOutput VS(uint vertexID : SV_VertexID, uint instID : SV_InstanceID)
 {
     Vertex vertex = Vertices[vertexID];
+    float4 meshPosition = mul(vertex.position, InstanceData[instID].model);
 
     VSOutput output;
-    output.position = vertex.position;
+    
+    output.position = mul(meshPosition, viewProjectionMatrix);
     output.color = vertex.color;
     output.uv = vertex.uv;
 

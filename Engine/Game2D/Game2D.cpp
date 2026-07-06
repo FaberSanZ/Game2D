@@ -5,6 +5,8 @@
 
 #include <vector>
 #include <wincodec.h>
+#include <DirectXMath.h>
+#include <vector>
 
 
 #pragma comment(lib, "d3d11.lib")
@@ -168,6 +170,18 @@ ID3D11BlendState* CreateAlphaBlendState(ID3D11Device* device)
 	return blendState;
 }
 
+ID3D11Buffer* CreateConstantBuffer(ID3D11Device* device, uint32_t size)
+{
+	D3D11_BUFFER_DESC bufferDesc = {};
+	bufferDesc.ByteWidth = size;
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	bufferDesc.CPUAccessFlags = 0;
+	ID3D11Buffer* buffer = nullptr;
+	device->CreateBuffer(&bufferDesc, nullptr, &buffer);
+	return buffer;
+}
+
 
 int main()
 {
@@ -195,6 +209,12 @@ int main()
 	ID3D11ShaderResourceView* textureView = nullptr;
 	ID3D11SamplerState* textureSampler = nullptr;
 	ID3D11BlendState* alphaBlendState = nullptr;
+
+	ID3D11Buffer* cameraBuffer = nullptr;
+
+
+	ID3D11Buffer* instacingBuffer = nullptr;
+	ID3D11ShaderResourceView* instacingView = nullptr;
 
 	WNDCLASSEX wcex = { sizeof(WNDCLASSEX), CS_CLASSDC, DefWindowProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, title, nullptr };
 	RegisterClassEx(&wcex);
@@ -263,12 +283,46 @@ int main()
 	alphaBlendState = CreateAlphaBlendState(device);
 
 
+
+	const float halfVisibleHeight = 4.0f;
+	const float aspectRatio = (float)width / (float)height;
+	const float halfVisibleWidth = halfVisibleHeight * aspectRatio;
+
+	DirectX::XMMATRIX projectionMatrix = DirectX::XMMatrixOrthographicOffCenterLH(-halfVisibleWidth, halfVisibleWidth, -halfVisibleHeight, halfVisibleHeight, 0.0f, 1.0f);
+
+	cameraBuffer = CreateConstantBuffer(device, sizeof(DirectX::XMMATRIX));
+	std::vector<DirectX::XMMATRIX> instanceMatrices;
+
+	DirectX::XMMATRIX meshMatrix =
+		DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) *
+		DirectX::XMMatrixRotationZ(0.1f) *
+		DirectX::XMMatrixTranslation(0.0f, 0.0f, 0.0f);
+
+	instanceMatrices.push_back(DirectX::XMMatrixTranspose(meshMatrix));
+
+	meshMatrix =
+		DirectX::XMMatrixScaling(0.5f, 0.5f, 1.0f) *
+		DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, 0.4f) *
+		DirectX::XMMatrixTranslation(1.3f, 1.3f, 0.0f);
+
+	instanceMatrices.push_back(DirectX::XMMatrixTranspose(meshMatrix));
+
+	const uint32_t instanceCount = static_cast<uint32_t>(instanceMatrices.size());
+
+	instacingBuffer = CreateStructuredBuffer(device, instanceMatrices.data(), sizeof(DirectX::XMMATRIX), instanceCount);
+	instacingView = CreateStructuredBufferView(device, instacingBuffer, instanceCount);
+
+
+
+	//cmd->UpdateSubresource(instacingBuffer, 0, nullptr, instanceMatrices.data(), 0, 0);
+
 	MSG msg = {};
 	while (msg.message != WM_QUIT)
 	{
 		PeekMessage(&msg, NULL, 0, 0, PM_REMOVE);
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
+
 
 		cmd->OMSetRenderTargets(1, &rtv, nullptr);
 
@@ -287,18 +341,20 @@ int main()
 		float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
 		cmd->OMSetBlendState(alphaBlendState, blendFactor, 0xffffffff);
 
-
-		// Draw a triangle
+		cmd->UpdateSubresource(cameraBuffer, 0, nullptr, &projectionMatrix, 0, 0);
+		
+		// Draw a mesh
 		cmd->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		cmd->VSSetShader(vertexShader, nullptr, 0);
 		cmd->PSSetShader(pixelShader, nullptr, 0);
-		//cmd->IASetInputLayout(nullptr);
+		//cmd->IASetInputLayout(nullptr); // No input layout needed for structured buffer
 		cmd->VSSetShaderResources(0, 1, &vertexView);
 		cmd->PSSetShaderResources(0, 1, &textureView);
 		cmd->PSSetSamplers(0, 1, &textureSampler);
+		cmd->VSSetConstantBuffers(0, 1, &cameraBuffer);
 		cmd->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
-
-		cmd->DrawIndexed(6, 0, 0);
+		cmd->VSSetShaderResources(1, 1, &instacingView);
+		cmd->DrawIndexedInstanced(6, 2, 0, 0, 0);
 
 		swapChain->Present(1, 0);
 	}
