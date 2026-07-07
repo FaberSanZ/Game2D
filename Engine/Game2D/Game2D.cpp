@@ -285,7 +285,7 @@ int main()
 
 	indexBuffer = CreateIndexBuffer(device, indices, sizeof(indices));
 
-	textureView = LoadTextureWIC(device, L"Assets/deco_check_bw_01_ffcc00_512.png");
+	textureView = LoadTextureWIC(device, L"Assets/round_damaged_brown_dark.png");
 	textureSampler = CreateTextureSampler(device);
 
 
@@ -303,20 +303,6 @@ int main()
 	cameraBuffer = CreateConstantBuffer(device, sizeof(DirectX::XMMATRIX));
 	std::vector<DirectX::XMMATRIX> instanceMatrices;
 	instanceMatrices.reserve(8 * 8);
-
-	//DirectX::XMMATRIX meshMatrix =
-	//	DirectX::XMMatrixScaling(1.0f, 1.0f, 1.0f) *
-	//	DirectX::XMMatrixRotationZ(0.1f) *
-	//	DirectX::XMMatrixTranslation(0.0f, 0.0f, 0.0f);
-
-	//instanceMatrices.push_back(DirectX::XMMatrixTranspose(meshMatrix));
-
-	//meshMatrix =
-	//	DirectX::XMMatrixScaling(0.5f, 0.5f, 1.0f) *
-	//	DirectX::XMMatrixRotationRollPitchYaw(0.0f, 0.0f, 0.4f) *
-	//	DirectX::XMMatrixTranslation(1.3f, 1.3f, 0.0f);
-
-	//instanceMatrices.push_back(DirectX::XMMatrixTranspose(meshMatrix));
 
 	const uint32_t instanceCount = 8 * 8;
 
